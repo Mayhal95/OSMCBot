@@ -26,6 +26,7 @@ Treat the token like a password. If it is ever posted, streamed, or committed, r
    - View Channels
    - Send Messages
    - Attach Files
+   - Manage Roles (required for `/roster sync`)
 4. Use the generated installation link and select the development Discord server.
 
 The permissions can be expanded later when a feature genuinely requires them.
@@ -43,8 +44,9 @@ Guild command registration updates quickly and is best for development. When the
 ```powershell
 Copy-Item .env.example .env
 npm install
+npm run database:setup
 npm run commands:deploy
 npm run dev
 ```
 
-The bot should log in, report the number of registered commands, and show `/about` and `/ping` in the server.
+The bot should log in, report the registered commands, and expose the `/about`, `/member`, `/ping`, and `/roster` command groups in the server.

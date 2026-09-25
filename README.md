@@ -16,32 +16,40 @@ The bot is built with TypeScript, discord.js, and Discord Components V2. Every u
 
 ## First-time setup
 
-The Discord application has not been created yet. Follow [the Developer Portal setup guide](docs/DEVELOPER-PORTAL-SETUP.md), then:
+Follow [the Developer Portal setup guide](docs/DEVELOPER-PORTAL-SETUP.md) and [Google Sheets setup guide](docs/GOOGLE-SHEETS-SETUP.md), then:
 
 1. Copy `.env.example` to `.env`.
-2. Add the bot token, application ID, and development server ID.
+2. Add the Discord and Google service account credentials.
 3. Install dependencies with `npm install`.
-4. Register the slash commands with `npm run commands:deploy`.
-5. Start the development bot with `npm run dev`.
+4. Prepare the database tabs with `npm run database:setup`.
+5. Register the slash commands with `npm run commands:deploy`.
+6. Start the development bot with `npm run dev`.
 
 Never commit `.env` or share the bot token.
 
 ## Commands included
 
 - `/about` — Displays the club identity and initial bot information.
+- `/member register` — Registers an in-game name and automatically captures Discord identity and join dates.
+- `/member view` — Displays a member profile.
+- `/member edit` — Uses controlled rank/status dropdowns, synchronizes mapped Discord rank roles, or permanently deletes a member and their private notes after confirmation; every change is audited.
+- `/member notes` — Views or adds private staff notes.
 - `/ping` — Confirms that the bot and Discord connection are healthy.
+- `/roster view` — Displays the paginated active roster.
+- `/roster sync` — Previews and synchronizes configured Discord rank roles.
 
 ## Useful scripts
 
-| Command                   | Purpose                                     |
-| ------------------------- | ------------------------------------------- |
-| `npm run dev`             | Run the bot locally with automatic restarts |
-| `npm run commands:deploy` | Register slash commands with Discord        |
-| `npm run check`           | Type-check the project                      |
-| `npm run lint`            | Run static code checks                      |
-| `npm run test`            | Run the automated tests                     |
-| `npm run build`           | Compile the production build                |
-| `npm start`               | Run the compiled production build           |
+| Command                   | Purpose                                      |
+| ------------------------- | -------------------------------------------- |
+| `npm run dev`             | Run the bot locally with automatic restarts  |
+| `npm run commands:deploy` | Register slash commands with Discord         |
+| `npm run database:setup`  | Create and format the Google Sheets database |
+| `npm run check`           | Type-check the project                       |
+| `npm run lint`            | Run static code checks                       |
+| `npm run test`            | Run the automated tests                      |
+| `npm run build`           | Compile the production build                 |
+| `npm start`               | Run the compiled production build            |
 
 ## Project layout
 

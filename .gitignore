@@ -209,6 +209,8 @@ dist/
 coverage/
 *.tsbuildinfo
 npm-debug.log*
+credentials/
+*.pem
 
 # Ruff stuff:
 .ruff_cache/

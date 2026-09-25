@@ -1,4 +1,5 @@
 import {
+  ActionRowBuilder,
   ContainerBuilder,
   MessageFlags,
   SectionBuilder,
@@ -6,7 +7,10 @@ import {
   SeparatorSpacingSize,
   TextDisplayBuilder,
   ThumbnailBuilder,
+  type ButtonBuilder,
   type InteractionReplyOptions,
+  type InteractionEditReplyOptions,
+  type StringSelectMenuBuilder,
 } from 'discord.js';
 
 import { OSMC_THEME } from '../config/theme.js';
@@ -21,6 +25,8 @@ export interface PanelOptions {
   footer?: string;
   thumbnailUrl?: string;
   tone?: PanelTone;
+  buttons?: readonly ButtonBuilder[];
+  selectMenus?: readonly StringSelectMenuBuilder[];
 }
 
 const toneMarks: Record<PanelTone, string> = {
@@ -59,6 +65,18 @@ export function createPanel(options: PanelOptions): ContainerBuilder {
       );
   }
 
+  for (const selectMenu of options.selectMenus ?? []) {
+    panel.addActionRowComponents(
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu),
+    );
+  }
+
+  if (options.buttons?.length) {
+    panel.addActionRowComponents(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(...options.buttons),
+    );
+  }
+
   panel
     .addSeparatorComponents(
       new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
@@ -68,6 +86,14 @@ export function createPanel(options: PanelOptions): ContainerBuilder {
     );
 
   return panel;
+}
+
+export function createPanelEdit(options: PanelOptions): InteractionEditReplyOptions {
+  return {
+    components: [createPanel(options)],
+    flags: MessageFlags.IsComponentsV2,
+    allowedMentions: { parse: [] },
+  };
 }
 
 export function createPanelReply(options: PanelOptions): InteractionReplyOptions {

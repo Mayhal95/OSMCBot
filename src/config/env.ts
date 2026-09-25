@@ -11,6 +11,15 @@ const environmentSchema = z.object({
     (value) => (value === '' ? undefined : value),
     snowflake.optional(),
   ),
+  GOOGLE_PRIVATE_KEY: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().optional(),
+  ),
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.email().optional(),
+  ),
+  GOOGLE_SPREADSHEET_ID: z.string().min(20).default('1WaAwMsCw5wA1vXklryjri8CIri5gxJxoRc60jWAbj3A'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 });
