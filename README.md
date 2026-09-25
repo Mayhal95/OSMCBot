@@ -29,6 +29,8 @@ Never commit `.env` or share the bot token.
 
 ## Commands included
 
+Every command and interactive control is restricted to the Discord role configured by `OSMC_FOUNDER_ROLE_ID`.
+
 - `/about` — Displays the club identity and initial bot information.
 - `/member register` — Registers an in-game name and automatically captures Discord identity and join dates.
 - `/member view` — Displays a member profile.

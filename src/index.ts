@@ -1,5 +1,6 @@
 import { ActivityType, Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 
+import { hasFounderRole } from './auth/founder.js';
 import { commands } from './commands/index.js';
 import {
   handleMemberButton,
@@ -13,7 +14,7 @@ import { handleRosterButton, isRosterButton } from './commands/roster.js';
 import { env } from './config/env.js';
 import { DatabaseConfigurationError, DatabaseSchemaError } from './database/errors.js';
 import { logger } from './logger.js';
-import { createPanel, createPanelEdit } from './ui/panel.js';
+import { createPanel, createPanelEdit, createPanelReply } from './ui/panel.js';
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
@@ -35,6 +36,29 @@ client.once(Events.ClientReady, (readyClient) => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
+    const requiresFounder =
+      interaction.isChatInputCommand() ||
+      interaction.isModalSubmit() ||
+      interaction.isButton() ||
+      interaction.isStringSelectMenu();
+    if (requiresFounder && !hasFounderRole(interaction)) {
+      if (interaction.isRepliable()) {
+        await interaction.reply(
+          createPanelReply({
+            title: 'Founder Role Required',
+            description: `Only members with the <@&${env.OSMC_FOUNDER_ROLE_ID}> role can use OSMC Bot commands and controls.`,
+            ephemeral: true,
+            tone: 'warning',
+          }),
+        );
+      }
+      logger.warn(
+        { interactionType: interaction.type, userId: interaction.user.id },
+        'Blocked non-Founder interaction',
+      );
+      return;
+    }
+
     if (interaction.isChatInputCommand()) {
       const command = commands.get(interaction.commandName);
       if (!command) {

@@ -5,7 +5,6 @@ import {
   LabelBuilder,
   MessageFlags,
   ModalBuilder,
-  PermissionFlagsBits,
   SlashCommandBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
@@ -18,6 +17,7 @@ import {
   type StringSelectMenuInteraction,
 } from 'discord.js';
 
+import { hasFounderRole } from '../auth/founder.js';
 import { getDatabase, type Actor } from '../database/google-sheets.js';
 import {
   MEMBER_STATUSES,
@@ -44,7 +44,7 @@ function isMemberManager(
     | ButtonInteraction
     | StringSelectMenuInteraction,
 ): boolean {
-  return interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ?? false;
+  return hasFounderRole(interaction);
 }
 
 async function denyStaffAction(
@@ -56,9 +56,8 @@ async function denyStaffAction(
 ): Promise<void> {
   await interaction.reply(
     createPanelReply({
-      title: 'Staff Permission Required',
-      description:
-        'You need the **Manage Server** permission to use this member-management action.',
+      title: 'Founder Role Required',
+      description: 'Only members with the configured **Founder** role can use OSMC Bot.',
       ephemeral: true,
       tone: 'warning',
     }),
@@ -765,24 +764,39 @@ export async function handleMemberModal(interaction: ModalSubmitInteraction): Pr
   const actor = actorFrom(interaction);
 
   if (action === 'register') {
-    const target = await interaction.guild.members.fetch(targetId);
+    const [target, mappings] = await Promise.all([
+      interaction.guild.members.fetch({ user: targetId, force: true }),
+      database.listRankMappings(),
+    ]);
+    const enteredRank = interaction.fields.getTextInputValue('rank').trim();
+    const selectedMapping = mappings.find(
+      (mapping) => mapping.rank.toLowerCase() === enteredRank.toLowerCase(),
+    );
     const now = new Date();
     const member = await database.registerMember({
       discordUserId: target.id,
       discordUsername: target.user.username,
       inGameName: interaction.fields.getTextInputValue('in_game_name').trim(),
-      rank: interaction.fields.getTextInputValue('rank').trim(),
+      rank: selectedMapping?.rank ?? enteredRank,
       clubJoinDate: now.toISOString().slice(0, 10),
       discordServerJoinedAt: target.joinedAt?.toISOString() ?? '',
       actor,
     });
+    const roleResult =
+      enteredRank && !selectedMapping
+        ? {
+            failed: true,
+            message:
+              '**Discord roles:** No active rank mapping matched the entered rank. Update the member from `/member edit` to select a configured rank.',
+          }
+        : await synchronizeMemberRankRoles(interaction, targetId, mappings, selectedMapping);
 
     await interaction.editReply(
       createPanelEdit({
         title: 'Member Registered',
         description: `${escapeMarkdown(member.inGameName)} is now on the official OSMC roster.`,
-        details: memberDetails(member),
-        tone: 'success',
+        details: [...memberDetails(member), roleResult.message],
+        tone: roleResult.failed ? 'warning' : 'success',
       }),
     );
     return;

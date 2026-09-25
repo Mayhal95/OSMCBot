@@ -7,6 +7,7 @@ const snowflake = z.string().regex(/^\d{17,20}$/, 'must be a valid Discord ID');
 const environmentSchema = z.object({
   DISCORD_TOKEN: z.string().min(1, 'is required'),
   DISCORD_CLIENT_ID: snowflake,
+  OSMC_FOUNDER_ROLE_ID: snowflake.default('1545973428018745434'),
   DISCORD_GUILD_ID: z.preprocess(
     (value) => (value === '' ? undefined : value),
     snowflake.optional(),

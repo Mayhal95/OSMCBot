@@ -3,7 +3,6 @@ import {
   ButtonStyle,
   escapeMarkdown,
   MessageFlags,
-  PermissionFlagsBits,
   SlashCommandBuilder,
   type ButtonInteraction,
   type ChatInputCommandInteraction,
@@ -11,6 +10,7 @@ import {
   type GuildMember,
 } from 'discord.js';
 
+import { hasFounderRole } from '../auth/founder.js';
 import { getDatabase, type Actor } from '../database/google-sheets.js';
 import type { MemberRecord, RankMapping } from '../database/schema.js';
 import { createPanel, createPanelEdit, createPanelReply } from '../ui/panel.js';
@@ -20,7 +20,7 @@ const pageSize = 8;
 const rosterButtonPrefix = 'roster:';
 
 function isRosterManager(interaction: ChatInputCommandInteraction | ButtonInteraction): boolean {
-  return interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles) ?? false;
+  return hasFounderRole(interaction);
 }
 
 function activeRoster(members: MemberRecord[]): MemberRecord[] {
@@ -125,8 +125,9 @@ async function previewRosterSync(interaction: ChatInputCommandInteraction): Prom
   if (!isRosterManager(interaction) || !interaction.guild) {
     await interaction.reply(
       createPanelReply({
-        title: 'Role Permission Required',
-        description: 'You need the **Manage Roles** permission to synchronize the roster.',
+        title: 'Founder Role Required',
+        description:
+          'Only members with the configured **Founder** role can synchronize the roster.',
         ephemeral: true,
         tone: 'warning',
       }),
@@ -238,8 +239,8 @@ export async function handleRosterButton(interaction: ButtonInteraction): Promis
   if (!isRosterManager(interaction)) {
     await interaction.reply(
       createPanelReply({
-        title: 'Role Permission Required',
-        description: 'You no longer have permission to synchronize roles.',
+        title: 'Founder Role Required',
+        description: 'You no longer have the configured **Founder** role.',
         ephemeral: true,
         tone: 'warning',
       }),
