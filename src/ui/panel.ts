@@ -11,6 +11,7 @@ import {
   type InteractionReplyOptions,
   type InteractionEditReplyOptions,
   type StringSelectMenuBuilder,
+  type UserSelectMenuBuilder,
 } from 'discord.js';
 
 import { OSMC_THEME } from '../config/theme.js';
@@ -27,6 +28,7 @@ export interface PanelOptions {
   tone?: PanelTone;
   buttons?: readonly ButtonBuilder[];
   selectMenus?: readonly StringSelectMenuBuilder[];
+  userSelectMenus?: readonly UserSelectMenuBuilder[];
 }
 
 const toneMarks: Record<PanelTone, string> = {
@@ -68,6 +70,12 @@ export function createPanel(options: PanelOptions): ContainerBuilder {
   for (const selectMenu of options.selectMenus ?? []) {
     panel.addActionRowComponents(
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu),
+    );
+  }
+
+  for (const selectMenu of options.userSelectMenus ?? []) {
+    panel.addActionRowComponents(
+      new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(selectMenu),
     );
   }
 

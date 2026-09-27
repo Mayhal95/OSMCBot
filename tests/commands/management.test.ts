@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { churchCommand } from '../../src/commands/church.js';
 import { memberCommand } from '../../src/commands/member.js';
 import { rosterCommand } from '../../src/commands/roster.js';
 import type { BotCommand } from '../../src/commands/types.js';
+import { voteCommand, voteOutcome } from '../../src/commands/vote.js';
 
 function subcommandNames(command: BotCommand): string[] {
   return command.data.toJSON().options?.map((option) => option.name) ?? [];
@@ -44,5 +46,29 @@ describe('management command definitions', () => {
         },
       ],
     });
+  });
+
+  it('registers the church console command', () => {
+    expect(churchCommand.data.toJSON()).toMatchObject({ name: 'church', options: [] });
+  });
+
+  it('limits votes to the supported 15 and 30 second durations', () => {
+    const duration = voteCommand.data
+      .toJSON()
+      .options?.find((option) => option.name === 'duration');
+    expect(duration).toMatchObject({
+      required: true,
+      choices: [
+        { name: '15 seconds', value: 15 },
+        { name: '30 seconds', value: 30 },
+      ],
+    });
+  });
+
+  it('describes unanimous and split vote outcomes', () => {
+    expect(voteOutcome(4, 0, 0)).toBe('Unanimous Approval');
+    expect(voteOutcome(0, 3, 0)).toBe('Unanimous Rejection');
+    expect(voteOutcome(3, 2, 1)).toBe('Vote Passed');
+    expect(voteOutcome(2, 2, 0)).toBe('Tie Vote');
   });
 });

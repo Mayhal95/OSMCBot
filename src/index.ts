@@ -1,6 +1,14 @@
 import { ActivityType, Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 
 import { hasFounderRole } from './auth/founder.js';
+import {
+  handleChurchButton,
+  handleChurchModal,
+  handleChurchUserSelect,
+  isChurchButton,
+  isChurchModal,
+  isChurchUserSelect,
+} from './commands/church.js';
 import { commands } from './commands/index.js';
 import {
   handleMemberButton,
@@ -11,6 +19,7 @@ import {
   isMemberSelect,
 } from './commands/member.js';
 import { handleRosterButton, isRosterButton } from './commands/roster.js';
+import { handleVoteButton, isVoteButton } from './commands/vote.js';
 import { env } from './config/env.js';
 import { DatabaseConfigurationError, DatabaseSchemaError } from './database/errors.js';
 import { logger } from './logger.js';
@@ -36,12 +45,14 @@ client.once(Events.ClientReady, (readyClient) => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
+    const isPublicVote = interaction.isButton() && isVoteButton(interaction.customId);
     const requiresFounder =
       interaction.isChatInputCommand() ||
       interaction.isModalSubmit() ||
       interaction.isButton() ||
-      interaction.isStringSelectMenu();
-    if (requiresFounder && !hasFounderRole(interaction)) {
+      interaction.isStringSelectMenu() ||
+      interaction.isUserSelectMenu();
+    if (requiresFounder && !isPublicVote && !hasFounderRole(interaction)) {
       if (interaction.isRepliable()) {
         await interaction.reply(
           createPanelReply({
@@ -82,8 +93,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    if (interaction.isModalSubmit() && isChurchModal(interaction.customId)) {
+      await handleChurchModal(interaction);
+      return;
+    }
+
     if (interaction.isButton() && isMemberButton(interaction.customId)) {
       await handleMemberButton(interaction);
+      return;
+    }
+
+    if (interaction.isButton() && isChurchButton(interaction.customId)) {
+      await handleChurchButton(interaction);
+      return;
+    }
+
+    if (interaction.isButton() && isVoteButton(interaction.customId)) {
+      await handleVoteButton(interaction);
+      return;
+    }
+
+    if (interaction.isUserSelectMenu() && isChurchUserSelect(interaction.customId)) {
+      await handleChurchUserSelect(interaction);
       return;
     }
 

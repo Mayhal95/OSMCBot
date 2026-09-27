@@ -8,6 +8,9 @@ const environmentSchema = z.object({
   DISCORD_TOKEN: z.string().min(1, 'is required'),
   DISCORD_CLIENT_ID: snowflake,
   OSMC_FOUNDER_ROLE_ID: snowflake.default('1545973428018745434'),
+  OSMC_CHURCH_TOPICS_CHANNEL_ID: snowflake.default('1546065581453611128'),
+  OSMC_CHURCH_MINUTES_CHANNEL_ID: snowflake.default('1546066314500513903'),
+  OSMC_VOTES_CHANNEL_ID: snowflake.default('1546176911024328775'),
   DISCORD_GUILD_ID: z.preprocess(
     (value) => (value === '' ? undefined : value),
     snowflake.optional(),
