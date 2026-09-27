@@ -3,7 +3,12 @@ import type { sheets_v4 } from 'googleapis';
 import { env } from './config/env.js';
 import { OSMC_THEME } from './config/theme.js';
 import { createSheetsClient, DATABASE_HEADERS } from './database/google-sheets.js';
-import { MEMBER_STATUSES, NOTE_CATEGORIES, SHEETS } from './database/schema.js';
+import {
+  CHURCH_ATTENDANCE_STATUSES,
+  MEMBER_STATUSES,
+  NOTE_CATEGORIES,
+  SHEETS,
+} from './database/schema.js';
 import { logger } from './logger.js';
 
 const sheets = createSheetsClient();
@@ -14,6 +19,10 @@ const columnWidths: Record<string, readonly number[]> = {
   [SHEETS.ranks]: [140, 80, 180, 80, 260],
   [SHEETS.notes]: [130, 130, 170, 120, 400, 190, 170, 160],
   [SHEETS.audit]: [140, 190, 160, 130, 170, 160, 150, 220, 220],
+  [SHEETS.churchMeetings]: [
+    140, 120, 220, 110, 100, 320, 420, 320, 180, 320, 180, 320, 190, 190, 170,
+  ],
+  [SHEETS.churchAttendance]: [140, 140, 120, 180, 170, 140, 180, 120, 120, 140, 190, 190, 170],
 };
 
 function columnLetter(width: number): string {
@@ -58,7 +67,13 @@ async function ensureSheetsExist(): Promise<void> {
     }
   }
 
-  for (const sheetName of [SHEETS.ranks, SHEETS.notes, SHEETS.audit]) {
+  for (const sheetName of [
+    SHEETS.ranks,
+    SHEETS.notes,
+    SHEETS.audit,
+    SHEETS.churchMeetings,
+    SHEETS.churchAttendance,
+  ]) {
     if (!properties.has(sheetName)) {
       requests.push({ addSheet: { properties: { title: sheetName } } });
     }
@@ -259,13 +274,80 @@ async function formatSchema(
     });
   }
 
+  const churchAttendanceSheetId = properties.get(SHEETS.churchAttendance)?.sheetId;
+  if (churchAttendanceSheetId !== undefined && churchAttendanceSheetId !== null) {
+    requests.push({
+      setDataValidation: {
+        range: {
+          sheetId: churchAttendanceSheetId,
+          startRowIndex: 1,
+          endRowIndex: 5000,
+          startColumnIndex: 9,
+          endColumnIndex: 10,
+        },
+        rule: {
+          condition: {
+            type: 'ONE_OF_LIST',
+            values: CHURCH_ATTENDANCE_STATUSES.map((status) => ({ userEnteredValue: status })),
+          },
+          strict: true,
+          showCustomUi: true,
+        },
+      },
+    });
+  }
+
   await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
+}
+
+async function verifyChurchSchema(): Promise<void> {
+  const [headers, metadata] = await Promise.all([
+    sheets.spreadsheets.values.batchGet({
+      spreadsheetId,
+      ranges: [`'${SHEETS.churchMeetings}'!A1:O1`, `'${SHEETS.churchAttendance}'!A1:M1`],
+    }),
+    sheets.spreadsheets.get({
+      spreadsheetId,
+      ranges: [`'${SHEETS.churchAttendance}'!J2:J2`],
+      includeGridData: true,
+      fields:
+        'sheets(properties(title,gridProperties(frozenRowCount)),data.rowData.values.dataValidation)',
+    }),
+  ]);
+
+  const expectedHeaders = [
+    DATABASE_HEADERS[SHEETS.churchMeetings],
+    DATABASE_HEADERS[SHEETS.churchAttendance],
+  ];
+  for (const [index, expected] of expectedHeaders.entries()) {
+    const actual = (headers.data.valueRanges?.[index]?.values?.[0] ?? []).map(String);
+    if (actual.join('|') !== expected.join('|')) {
+      throw new Error(
+        `Verification failed for ${index === 0 ? SHEETS.churchMeetings : SHEETS.churchAttendance} headers.`,
+      );
+    }
+  }
+
+  const attendanceSheet = metadata.data.sheets?.find(
+    (sheet) => sheet.properties?.title === SHEETS.churchAttendance,
+  );
+  if (attendanceSheet?.properties?.gridProperties?.frozenRowCount !== 1) {
+    throw new Error('Verification failed: Church Attendance header row is not frozen.');
+  }
+  const allowedStatuses =
+    attendanceSheet.data?.[0]?.rowData?.[0]?.values?.[0]?.dataValidation?.condition?.values?.map(
+      (value) => value.userEnteredValue ?? '',
+    ) ?? [];
+  if (allowedStatuses.join('|') !== CHURCH_ATTENDANCE_STATUSES.join('|')) {
+    throw new Error('Verification failed: Church Attendance status validation is missing.');
+  }
 }
 
 try {
   await ensureSheetsExist();
   const properties = await ensureHeaders();
   await formatSchema(properties);
+  await verifyChurchSchema();
   logger.info({ spreadsheetId }, 'OSMC Google Sheets database schema is ready');
 } catch (error) {
   logger.fatal(

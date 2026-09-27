@@ -6,6 +6,8 @@ import { env } from '../config/env.js';
 import { DatabaseConfigurationError, DatabaseSchemaError } from './errors.js';
 import {
   AUDIT_HEADERS,
+  CHURCH_ATTENDANCE_HEADERS,
+  CHURCH_MEETING_HEADERS,
   MEMBER_HEADERS,
   NOTE_HEADERS,
   RANK_HEADERS,
@@ -13,6 +15,7 @@ import {
   type MemberNote,
   type MemberRecord,
   type RankMapping,
+  type ChurchMeetingRecord,
 } from './schema.js';
 
 export interface Actor {
@@ -42,6 +45,21 @@ export interface AddNoteInput {
   member: MemberRecord;
   category: string;
   note: string;
+  actor: Actor;
+}
+
+export interface RecordChurchMeetingInput {
+  meetingDate: string;
+  title: string;
+  topicCount: number;
+  summary: string;
+  minutes: string;
+  actions: string;
+  discordMessageId: string;
+  discordMessageUrl: string;
+  threadId: string;
+  threadUrl: string;
+  presentMembers: Array<{ discordUserId: string; discordUsername: string }>;
   actor: Actor;
 }
 
@@ -369,14 +387,115 @@ export class GoogleSheetsDatabase {
     );
   }
 
-  private async appendRow(sheetName: string, width: number, row: string[]): Promise<void> {
+  async recordChurchMeeting(input: RecordChurchMeetingInput): Promise<ChurchMeetingRecord> {
+    const publishedAt = new Date().toISOString();
+    const meetingId = createId('CHURCH');
+    const presentByDiscordId = new Map(
+      input.presentMembers.map((member) => [member.discordUserId, member.discordUsername]),
+    );
+    const roster = await this.listMembers();
+    const trackedRoster = roster.filter(
+      (member) => !['removed', 'retired'].includes(member.status.toLowerCase()),
+    );
+    const rosterByDiscordId = new Map(
+      trackedRoster.map((member) => [member.discordUserId, member]),
+    );
+    const trackedDiscordIds = new Set([
+      ...trackedRoster.map((member) => member.discordUserId),
+      ...presentByDiscordId.keys(),
+    ]);
+    const meeting: ChurchMeetingRecord = {
+      meetingId,
+      meetingDate: input.meetingDate,
+      title: input.title,
+      attendeeCount: presentByDiscordId.size,
+      topicCount: input.topicCount,
+      summary: input.summary,
+      minutes: input.minutes,
+      actions: input.actions,
+      discordMessageId: input.discordMessageId,
+      discordMessageUrl: input.discordMessageUrl,
+      threadId: input.threadId,
+      threadUrl: input.threadUrl,
+      publishedAt,
+      recordedByDiscordId: input.actor.discordId,
+      recordedByUsername: input.actor.username,
+    };
+
+    await this.appendRow(SHEETS.churchMeetings, CHURCH_MEETING_HEADERS.length, [
+      meeting.meetingId,
+      meeting.meetingDate,
+      meeting.title,
+      meeting.attendeeCount,
+      meeting.topicCount,
+      meeting.summary,
+      meeting.minutes,
+      meeting.actions,
+      meeting.discordMessageId,
+      meeting.discordMessageUrl,
+      meeting.threadId,
+      meeting.threadUrl,
+      meeting.publishedAt,
+      meeting.recordedByDiscordId,
+      meeting.recordedByUsername,
+    ]);
+
+    const attendanceRows = [...trackedDiscordIds].map((discordUserId) => {
+      const member = rosterByDiscordId.get(discordUserId);
+      const isPresent = presentByDiscordId.has(discordUserId);
+      return [
+        createId('ATTEND'),
+        meetingId,
+        input.meetingDate,
+        discordUserId,
+        presentByDiscordId.get(discordUserId) ?? member?.discordUsername ?? 'Unknown',
+        member?.memberId ?? '',
+        member?.inGameName ?? '',
+        member?.rank ?? '',
+        member?.status ?? 'Unregistered',
+        isPresent ? 'Present' : 'Absent',
+        publishedAt,
+        input.actor.discordId,
+        input.actor.username,
+      ];
+    });
+    await this.appendRows(
+      SHEETS.churchAttendance,
+      CHURCH_ATTENDANCE_HEADERS.length,
+      attendanceRows,
+    );
+    await this.appendAudit(
+      'RECORD_CHURCH',
+      meetingId,
+      input.actor,
+      'Attendance',
+      '',
+      `${meeting.attendeeCount} present / ${attendanceRows.length} tracked`,
+    );
+    return meeting;
+  }
+
+  private async appendRow(
+    sheetName: string,
+    width: number,
+    row: Array<string | number | boolean>,
+  ): Promise<void> {
+    await this.appendRows(sheetName, width, [row]);
+  }
+
+  private async appendRows(
+    sheetName: string,
+    width: number,
+    rows: Array<Array<string | number | boolean>>,
+  ): Promise<void> {
+    if (!rows.length) return;
     const endColumn = String.fromCharCode(64 + width);
     await this.sheets.spreadsheets.values.append({
       spreadsheetId: this.spreadsheetId,
       range: `'${sheetName}'!A:${endColumn}`,
       valueInputOption: 'RAW',
       insertDataOption: 'OVERWRITE',
-      requestBody: { values: [row] },
+      requestBody: { values: rows },
     });
   }
 
@@ -414,4 +533,6 @@ export const DATABASE_HEADERS = {
   [SHEETS.ranks]: RANK_HEADERS,
   [SHEETS.notes]: NOTE_HEADERS,
   [SHEETS.audit]: AUDIT_HEADERS,
+  [SHEETS.churchMeetings]: CHURCH_MEETING_HEADERS,
+  [SHEETS.churchAttendance]: CHURCH_ATTENDANCE_HEADERS,
 } as const;

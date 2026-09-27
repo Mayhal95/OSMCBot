@@ -16,6 +16,7 @@ import {
 } from 'discord.js';
 
 import { env } from '../config/env.js';
+import { getDatabase } from '../database/google-sheets.js';
 import { createPanel, createPanelEdit, createPanelReply } from '../ui/panel.js';
 import type { BotCommand } from './types.js';
 
@@ -128,6 +129,17 @@ function safeDetails(lines: string[]): string[] {
     length += value.length + 3;
   }
   return kept;
+}
+
+function easternDate(): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const value = new Map(parts.map((part) => [part.type, part.value]));
+  return `${value.get('year')}-${value.get('month')}-${value.get('day')}`;
 }
 
 async function fetchSendableChannel(
@@ -362,12 +374,35 @@ export async function handleChurchModal(interaction: ModalSubmitInteraction): Pr
     name: `Discussion — ${title}`.slice(0, 100),
     reason: 'Automatic discussion thread for OSMC church minutes',
   });
+  const presentMembers = await Promise.all(
+    [...draft.attendance].map(async (discordUserId) => {
+      const user = await interaction.client.users.fetch(discordUserId).catch(() => null);
+      return { discordUserId, discordUsername: user?.username ?? 'Unknown' };
+    }),
+  );
+  const meeting = await getDatabase().recordChurchMeeting({
+    meetingDate: easternDate(),
+    title,
+    topicCount: draft.topics.length,
+    summary,
+    minutes,
+    actions,
+    discordMessageId: message.id,
+    discordMessageUrl: message.url,
+    threadId: thread.id,
+    threadUrl: thread.url,
+    presentMembers,
+    actor: { discordId: interaction.user.id, username: interaction.user.username },
+  });
   drafts.delete(interaction.guildId);
   await interaction.editReply(
     createPanelEdit({
       title: 'Church Minutes Published',
-      description: 'The final meeting record is posted and its discussion thread is open.',
+      description:
+        'The final meeting record is posted, its discussion thread is open, and attendance was saved to Google Sheets.',
       details: [
+        `**Meeting ID:** \`${meeting.meetingId}\``,
+        `**Attendance recorded:** ${meeting.attendeeCount} present`,
         `[View meeting minutes](${message.url})`,
         `[Open discussion thread](${thread.url})`,
       ],

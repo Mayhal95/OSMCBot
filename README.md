@@ -32,7 +32,7 @@ Never commit `.env` or share the bot token.
 Every command and management control is restricted to the Discord role configured by `OSMC_FOUNDER_ROLE_ID`. Ballot buttons are intentionally available to server members after a Founder opens a vote.
 
 - `/about` — Displays the club identity and initial bot information.
-- `/church` — Opens the private church console for attendance, discussion topics, and final meeting minutes with an automatic discussion thread.
+- `/church` — Opens the private church console for attendance, discussion topics, and final meeting minutes with an automatic discussion thread and Google Sheets attendance history.
 - `/member register` — Registers an in-game name and automatically captures Discord identity and join dates.
 - `/member view` — Displays a member profile.
 - `/member edit` — Uses controlled rank/status dropdowns, synchronizes mapped Discord rank roles, or permanently deletes a member and their private notes after confirmation; every change is audited.

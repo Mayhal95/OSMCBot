@@ -3,6 +3,8 @@ export const SHEETS = {
   ranks: 'Ranks',
   notes: 'Member Notes',
   audit: 'Audit Log',
+  churchMeetings: 'Church Meetings',
+  churchAttendance: 'Church Attendance',
 } as const;
 
 export const MEMBER_HEADERS = [
@@ -46,6 +48,42 @@ export const AUDIT_HEADERS = [
   'Previous Value',
   'New Value',
 ] as const;
+
+export const CHURCH_MEETING_HEADERS = [
+  'Meeting ID',
+  'Meeting Date',
+  'Meeting Title',
+  'Attendee Count',
+  'Topic Count',
+  'Summary',
+  'Minutes',
+  'Actions / Follow-ups',
+  'Discord Message ID',
+  'Discord Message URL',
+  'Thread ID',
+  'Thread URL',
+  'Published At',
+  'Recorded By Discord ID',
+  'Recorded By Username',
+] as const;
+
+export const CHURCH_ATTENDANCE_HEADERS = [
+  'Attendance ID',
+  'Meeting ID',
+  'Meeting Date',
+  'Discord User ID',
+  'Discord Username',
+  'Member ID',
+  'In-Game Name',
+  'Rank',
+  'Roster Status',
+  'Attendance Status',
+  'Recorded At',
+  'Recorded By Discord ID',
+  'Recorded By Username',
+] as const;
+
+export const CHURCH_ATTENDANCE_STATUSES = ['Present', 'Absent', 'Excused', 'Late'] as const;
 
 export const MEMBER_STATUSES = [
   'Active',
@@ -99,4 +137,22 @@ export interface RankMapping {
   discordRoleId: string;
   active: boolean;
   notes: string;
+}
+
+export interface ChurchMeetingRecord {
+  meetingId: string;
+  meetingDate: string;
+  title: string;
+  attendeeCount: number;
+  topicCount: number;
+  summary: string;
+  minutes: string;
+  actions: string;
+  discordMessageId: string;
+  discordMessageUrl: string;
+  threadId: string;
+  threadUrl: string;
+  publishedAt: string;
+  recordedByDiscordId: string;
+  recordedByUsername: string;
 }

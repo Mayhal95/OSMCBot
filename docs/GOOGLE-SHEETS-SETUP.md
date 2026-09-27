@@ -46,6 +46,10 @@ This safely creates and formats these tabs without overwriting a conflicting hea
 - `Ranks` — rank names mapped to Discord Role IDs
 - `Member Notes` — private staff notes
 - `Audit Log` — registration, edits, removals, notes, and roster-sync history
+- `Church Meetings` — one archive row for every published church meeting and its Discord links
+- `Church Attendance` — one present/absent row per tracked roster member for every meeting
+
+The `Church Attendance` status column accepts `Present`, `Absent`, `Excused`, or `Late`. Publishing final minutes from `/church` automatically snapshots the current active roster, marks the selected attendees present, and marks the remaining tracked members absent. Selected Discord users who are not yet registered are still saved as present with an `Unregistered` roster status.
 
 ## 5. Configure rank synchronization
 
