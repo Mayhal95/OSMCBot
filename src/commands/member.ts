@@ -24,6 +24,7 @@ import {
   NOTE_CATEGORIES,
   type MemberRecord,
   type RankMapping,
+  type ChurchAttendanceSummary,
 } from '../database/schema.js';
 import { createPanelEdit, createPanelReply } from '../ui/panel.js';
 import type { BotCommand } from './types.js';
@@ -103,6 +104,19 @@ function memberDetails(member: MemberRecord): string[] {
     `**Joined OSMC:** ${displayDate(member.clubJoinDate)}`,
     `**Discord server joined:** ${displayDate(member.discordServerJoinedAt)}`,
     `**Member ID:** \`${member.memberId}\``,
+  ];
+}
+
+function churchAttendanceDetails(summary: ChurchAttendanceSummary): string[] {
+  if (!summary.total) return ['**Church attendance:** No meetings recorded yet'];
+  const rate = summary.attendanceRate === null ? 'Not yet rated' : `${summary.attendanceRate}%`;
+  const latest = summary.recent[0];
+  return [
+    `**Church attendance:** ${rate} · ${summary.attended} of ${summary.counted} counted meetings`,
+    `**Attendance record:** ${summary.present} present · ${summary.late} late · ${summary.absent} absent · ${summary.excused} excused`,
+    ...(latest
+      ? [`**Latest church:** ${displayDate(latest.meetingDate)} · ${escapeMarkdown(latest.status)}`]
+      : []),
   ];
 }
 
@@ -322,7 +336,8 @@ async function viewMember(interaction: ChatInputCommandInteraction): Promise<voi
   }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  const member = await getDatabase().findMemberByDiscordId(target.id);
+  const database = getDatabase();
+  const member = await database.findMemberByDiscordId(target.id);
 
   if (!member) {
     await interaction.editReply(
@@ -335,11 +350,12 @@ async function viewMember(interaction: ChatInputCommandInteraction): Promise<voi
     return;
   }
 
+  const attendance = await database.getChurchAttendanceSummary(target.id);
   await interaction.editReply(
     createPanelEdit({
       title: member.inGameName,
       description: 'OSMC member profile',
-      details: memberDetails(member),
+      details: [...memberDetails(member), ...churchAttendanceDetails(attendance)],
     }),
   );
 }

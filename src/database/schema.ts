@@ -156,3 +156,21 @@ export interface ChurchMeetingRecord {
   recordedByDiscordId: string;
   recordedByUsername: string;
 }
+
+export interface ChurchAttendanceRecord {
+  meetingId: string;
+  meetingDate: string;
+  status: string;
+}
+
+export interface ChurchAttendanceSummary {
+  total: number;
+  counted: number;
+  attended: number;
+  present: number;
+  absent: number;
+  excused: number;
+  late: number;
+  attendanceRate: number | null;
+  recent: ChurchAttendanceRecord[];
+}

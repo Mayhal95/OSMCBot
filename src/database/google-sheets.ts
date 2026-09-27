@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { google, type sheets_v4 } from 'googleapis';
 
 import { env } from '../config/env.js';
+import { summarizeChurchAttendance } from './attendance.js';
 import { DatabaseConfigurationError, DatabaseSchemaError } from './errors.js';
 import {
   AUDIT_HEADERS,
@@ -16,6 +17,7 @@ import {
   type MemberRecord,
   type RankMapping,
   type ChurchMeetingRecord,
+  type ChurchAttendanceSummary,
 } from './schema.js';
 
 export interface Actor {
@@ -374,6 +376,22 @@ export class GoogleSheetsDatabase {
         notes: asString(row[4]),
       }))
       .filter((rank) => rank.rank && rank.discordRoleId && rank.active);
+  }
+
+  async getChurchAttendanceSummary(discordUserId: string): Promise<ChurchAttendanceSummary> {
+    const response = await this.sheets.spreadsheets.values.get({
+      spreadsheetId: this.spreadsheetId,
+      range: `'${SHEETS.churchAttendance}'!B2:J5000`,
+    });
+    const records = (response.data.values ?? [])
+      .filter((row) => asString(row[2]) === discordUserId)
+      .map((row) => ({
+        meetingId: asString(row[0]),
+        meetingDate: asString(row[1]),
+        status: asString(row[8]),
+      }))
+      .filter((record) => record.meetingId && record.meetingDate && record.status);
+    return summarizeChurchAttendance(records);
   }
 
   async recordRosterSync(actor: Actor, changedMembers: number): Promise<void> {
